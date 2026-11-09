@@ -140,10 +140,13 @@ def test_tc06_central_sendemail_graph_and_keyvault_pipeline():
 
 def test_tc07_exchange_online_application_access_policy_script():
     """TC-07: Run setup_exchange_rbac.ps1 in DryRun mode to validate least-privilege mailbox scoping."""
+    import shutil
     ps_script = REPO_ROOT / "cicd" / "setup_exchange_rbac.ps1"
     assert ps_script.exists()
+    pwsh_bin = shutil.which("pwsh") or shutil.which("powershell")
+    assert pwsh_bin is not None, "PowerShell (pwsh or powershell) is required"
     res = subprocess.run(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps_script), "-DryRun"],
+        [pwsh_bin, "-NoProfile", "-File", str(ps_script), "-DryRun"],
         capture_output=True, text=True, check=True
     )
     assert "AccessCheckResult: Granted" in res.stdout

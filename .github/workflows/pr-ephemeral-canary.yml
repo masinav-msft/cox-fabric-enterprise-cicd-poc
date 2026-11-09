@@ -25,16 +25,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: "Run Static Linter & Unit Test Suite (TC-01 to TC-15)"
-        run: |
-          pip install fabric-cicd azure-identity requests pytest
-          python cicd/lint_fabric_artifacts.py workspace
-          pytest tests/test_cox_enterprise_cicd_poc.py -v -k "not live"
       - uses: azure/login@v2
+        if: always()
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Run Static Linter & Unit Test Suite (TC-01 to TC-15)"
+        run: |
+          pip install fabric-cicd azure-identity requests pytest
+          python cicd/lint_fabric_artifacts.py workspace
+          pytest tests/test_cox_enterprise_cicd_poc.py -v
       - name: "Provision & Deploy Ephemeral Canary Pair (FAB_CANARY_PR{N}_RAW & _FIN)"
         run: |
           PR_ID="${{ github.event.pull_request.number || inputs.pr_number || '901' }}"
