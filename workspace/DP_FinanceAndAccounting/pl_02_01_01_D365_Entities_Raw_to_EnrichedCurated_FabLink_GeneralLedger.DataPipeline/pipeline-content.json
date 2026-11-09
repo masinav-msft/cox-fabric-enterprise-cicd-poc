@@ -1,6 +1,103 @@
 {
   "properties": {
     "description": "D365 General Ledger Raw to Enriched/Curated Silver Pipeline (100% Parameterized via Var_GlobalConfig + Central Graph Email Alert)",
+    "activities": [
+      {
+        "type": "Copy",
+        "typeProperties": {
+          "source": {
+            "type": "DataWarehouseSource",
+            "sqlReaderQuery": {
+              "value": "@if(pipeline().parameters.p_simulate_failure, 'SELECT * FROM dbo.NonExistentTable_ForceAlertTest', 'SELECT JournalNumber, AccountNum, AccountName, FiscalPeriod, PostingDate, DebitAmount, CreditAmount, CurrencyCode, CompanyCode, SourceSystem FROM dbo.GeneralLedgerAccountEntry')",
+              "type": "Expression"
+            },
+            "datasetSettings": {
+              "type": "DataWarehouseTable",
+              "externalReferences": {
+                "connection": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_sql_connection_id"
+              },
+              "linkedService": {
+                "name": "Raw_SQL_Analytics_Endpoint",
+                "properties": {
+                  "type": "DataWarehouse",
+                  "typeProperties": {
+                    "artifactId": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_sql_endpoint_id",
+                    "endpoint": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_sql_endpoint_server",
+                    "workspaceId": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_workspace_id"
+                  }
+                }
+              }
+            }
+          },
+          "sink": {
+            "type": "LakehouseTableSink",
+            "tableActionOption": "OverwriteSchema",
+            "datasetSettings": {
+              "type": "LakehouseTable",
+              "typeProperties": {
+                "table": "GeneralLedgerAccountEntry_Silver"
+              },
+              "linkedService": {
+                "name": "Silver_Lakehouse_Target",
+                "properties": {
+                  "type": "Lakehouse",
+                  "typeProperties": {
+                    "artifactId": "@pipeline().libraryVariables.Var_GlobalConfig_v_silver_lakehouse_id",
+                    "workspaceId": "@pipeline().libraryVariables.Var_GlobalConfig_v_silver_workspace_id",
+                    "rootFolder": "Tables"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.02:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30
+        },
+        "name": "Copy_Entity_Data_Raw_To_Silver",
+        "state": "Active"
+      },
+      {
+        "type": "ExecutePipeline",
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "20000001-0000-4000-8000-000000000003",
+            "type": "PipelineReference"
+          },
+          "parameters": {
+            "p_failed_pipeline_name": {
+              "value": "@pipeline().Pipeline",
+              "type": "Expression"
+            },
+            "p_failed_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "Expression"
+            },
+            "p_failed_activity_name": {
+              "value": "Copy_Entity_Data_Raw_To_Silver",
+              "type": "Expression"
+            },
+            "p_error_message": {
+              "value": "@string(activity('Copy_Entity_Data_Raw_To_Silver').error.message)",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true
+        },
+        "name": "Invoke_Central_Fail_Alert_Silver",
+        "state": "Active",
+        "dependsOn": [
+          {
+            "activity": "Copy_Entity_Data_Raw_To_Silver",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ]
+      }
+    ],
     "parameters": {
       "p_simulate_failure": {
         "type": "bool",
@@ -53,103 +150,6 @@
         "variableName": "v_silver_sql_endpoint_id",
         "libraryName": "Var_GlobalConfig"
       }
-    },
-    "activities": [
-      {
-        "name": "Copy_Entity_Data_Raw_To_Silver",
-        "type": "Copy",
-        "state": "Active",
-        "policy": {
-          "timeout": "0.02:00:00",
-          "retry": 1,
-          "retryIntervalInSeconds": 30
-        },
-        "typeProperties": {
-          "source": {
-            "type": "DataWarehouseSource",
-            "sqlReaderQuery": {
-              "value": "@if(pipeline().parameters.p_simulate_failure, 'SELECT * FROM dbo.NonExistentTable_ForceAlertTest', 'SELECT JournalNumber, AccountNum, AccountName, FiscalPeriod, PostingDate, DebitAmount, CreditAmount, CurrencyCode, CompanyCode, SourceSystem FROM dbo.GeneralLedgerAccountEntry')",
-              "type": "Expression"
-            },
-            "datasetSettings": {
-              "type": "DataWarehouseTable",
-              "linkedService": {
-                "name": "Raw_SQL_Analytics_Endpoint",
-                "properties": {
-                  "type": "DataWarehouse",
-                  "typeProperties": {
-                    "endpoint": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_sql_endpoint_server",
-                    "artifactId": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_sql_endpoint_id",
-                    "workspaceId": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_workspace_id"
-                  }
-                }
-              },
-              "externalReferences": {
-                "connection": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_sql_connection_id"
-              }
-            }
-          },
-          "sink": {
-            "type": "LakehouseTableSink",
-            "tableActionOption": "OverwriteSchema",
-            "datasetSettings": {
-              "type": "LakehouseTable",
-              "typeProperties": {
-                "table": "GeneralLedgerAccountEntry_Silver"
-              },
-              "linkedService": {
-                "name": "Silver_Lakehouse_Target",
-                "properties": {
-                  "type": "Lakehouse",
-                  "typeProperties": {
-                    "artifactId": "@pipeline().libraryVariables.Var_GlobalConfig_v_silver_lakehouse_id",
-                    "workspaceId": "@pipeline().libraryVariables.Var_GlobalConfig_v_silver_workspace_id",
-                    "rootFolder": "Tables"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Invoke_Central_Fail_Alert_Silver",
-        "type": "ExecutePipeline",
-        "state": "Active",
-        "dependsOn": [
-          {
-            "activity": "Copy_Entity_Data_Raw_To_Silver",
-            "dependencyConditions": [
-              "Failed"
-            ]
-          }
-        ],
-        "typeProperties": {
-          "pipeline": {
-            "referenceName": "pl_00_Common_SendEmail_GraphWeb",
-            "type": "PipelineReference"
-          },
-          "waitOnCompletion": true,
-          "parameters": {
-            "p_failed_pipeline_name": {
-              "value": "@pipeline().Pipeline",
-              "type": "Expression"
-            },
-            "p_failed_run_id": {
-              "value": "@pipeline().RunId",
-              "type": "Expression"
-            },
-            "p_failed_activity_name": {
-              "value": "Copy_Entity_Data_Raw_To_Silver",
-              "type": "Expression"
-            },
-            "p_error_message": {
-              "value": "@string(activity('Copy_Entity_Data_Raw_To_Silver').error.message)",
-              "type": "Expression"
-            }
-          }
-        }
-      }
-    ]
+    }
   }
 }
