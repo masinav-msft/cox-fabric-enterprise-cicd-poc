@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "CopyJob",
+    "displayName": "cj_02_01_03_D365_Raw_to_Silver_CopyJob",
+    "description": "D365 General Ledger Parameterized CopyJob"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "20000001-0000-4000-8000-000000000005"
+  }
+}

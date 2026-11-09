@@ -1,0 +1,174 @@
+name: "Reusable Enterprise Fabric 1:N:1 Multi-Domain CI/CD Pipeline"
+
+on:
+  workflow_call:
+    inputs:
+      target_environment:
+        description: "Target Environment (DEV, QA, or PROD)"
+        required: true
+        type: string
+      runner_group:
+        description: "GitHub Runner Label (ubuntu-latest or cox-fabric-vnet-runner)"
+        required: false
+        type: string
+        default: "ubuntu-latest"
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Target Environment (DEV, QA, or PROD)"
+        required: true
+        default: "QA"
+        type: choice
+        options:
+          - DEV
+          - QA
+          - PROD
+      runner_group:
+        description: "GitHub Runner Label"
+        required: false
+        default: "ubuntu-latest"
+        type: string
+
+permissions:
+  id-token: write   # Entra Workload Identity Federation (OIDC - Zero Client Secrets)
+  contents: read
+
+jobs:
+  stage0_lint_and_plan:
+    name: "Stage 0: Static Linter & Topology Matrix Plan"
+    runs-on: ${{ inputs.runner_group || 'ubuntu-latest' }}
+    outputs:
+      domain_matrix: ${{ steps.set_matrix.outputs.domain_matrix }}
+      gold_matrix: ${{ steps.set_matrix.outputs.gold_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: "Run Pre-Deploy Static Linter (No Raw GUIDs / No Outlook Activities)"
+        run: python cicd/lint_fabric_artifacts.py workspace
+      - name: "Generate Domain & Gold Matrix from config/enterprise-topology.json"
+        id: set_matrix
+        run: |
+          ENV_NAME="${{ inputs.target_environment }}"
+          DOMAIN_MATRIX=$(python -c "import json; t=json.load(open('config/enterprise-topology.json')); print(json.dumps([{'domainKey': d['domainKey'], 'folderPath': d['folderPath'], 'smokeTestPipeline': d['smokeTestPipeline'], 'wsName': d['environments']['$ENV_NAME']['targetWorkspaceName']} for d in t['stage2_domainWorkspaces']]))")
+          GOLD_MATRIX=$(python -c "import json; t=json.load(open('config/enterprise-topology.json')); print(json.dumps([{'domainKey': g['domainKey'], 'folderPath': g['folderPath'], 'smokeTestPipeline': g['smokeTestPipeline'], 'wsName': g['environments']['$ENV_NAME']['targetWorkspaceName']} for g in t.get('stage3_goldWorkspaces', [])]))")
+          echo "domain_matrix=$DOMAIN_MATRIX" >> $GITHUB_OUTPUT
+          echo "gold_matrix=$GOLD_MATRIX" >> $GITHUB_OUTPUT
+
+  stage1_deploy_common_raw:
+    name: "Stage 1: Deploy Upstream Common Raw (${{ inputs.target_environment }})"
+    needs: stage0_lint_and_plan
+    runs-on: ${{ inputs.runner_group || 'ubuntu-latest' }}
+    environment: ${{ inputs.target_environment == 'PROD' && 'production' || (inputs.target_environment == 'QA' && 'staging' || 'development') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Install Enterprise CI/CD Dependencies"
+        run: pip install fabric-cicd azure-identity requests pytest
+      - name: "Deploy Stage 1 Common Raw Workspace"
+        run: |
+          RAW_WS=$(python -c "import json; t=json.load(open('config/enterprise-topology.json')); print(t['stage1_rawWorkspaces'][0]['workspaces']['${{ inputs.target_environment }}'])")
+          python cicd/deploy_workspace.py \
+            --workspace-dir "workspace/Common_Raw" \
+            --target-workspace-name "$RAW_WS" \
+            --environment "${{ inputs.target_environment }}" \
+            --rest-only
+
+  stage2_deploy_domains_matrix:
+    name: "Stage 2: Deploy Domain [${{ matrix.domain.domainKey }}] -> ${{ inputs.target_environment }}"
+    needs: [stage0_lint_and_plan, stage1_deploy_common_raw]
+    runs-on: ${{ inputs.runner_group || 'ubuntu-latest' }}
+    environment: ${{ inputs.target_environment == 'PROD' && 'production' || (inputs.target_environment == 'QA' && 'staging' || 'development') }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        domain: ${{ fromJson(needs.stage0_lint_and_plan.outputs.domain_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Install Enterprise CI/CD Dependencies"
+        run: pip install fabric-cicd azure-identity requests pytest
+      - name: "Auto-Resolve All Cross-Workspace GUIDs by Display Name"
+        run: |
+          python cicd/sync_variable_library.py \
+            --topology config/enterprise-topology.json \
+            --domain "${{ matrix.domain.domainKey }}" \
+            --envs QA PROD \
+            --update-dev-defaults
+      - name: "Pre-Flight RBAC & Connection Access Check"
+        run: |
+          SPN_OBJ=$(python -c "import json; print(json.load(open('config/enterprise-topology.json'))['enterpriseSettings']['spnObjectId'])")
+          python cicd/preflight_rbac_validator.py \
+            --workspace-dir "${{ matrix.domain.folderPath }}" \
+            --target-workspace-name "${{ matrix.domain.wsName }}" \
+            --environment "${{ inputs.target_environment }}" \
+            --spn-object-id "$SPN_OBJ"
+      - name: "Deploy Domain Artifacts & Activate ValueSet (${{ inputs.target_environment }})"
+        run: |
+          python cicd/deploy_workspace.py \
+            --workspace-dir "${{ matrix.domain.folderPath }}" \
+            --target-workspace-name "${{ matrix.domain.wsName }}" \
+            --environment "${{ inputs.target_environment }}" \
+            --rest-only
+      - name: "Execute Post-Deploy Pipeline Smoke Test"
+        run: |
+          python cicd/run_smoke_test.py \
+            --workspace-name "${{ matrix.domain.wsName }}" \
+            --pipeline "${{ matrix.domain.smokeTestPipeline }}"
+
+  stage3_deploy_enterprise_gold:
+    name: "Stage 3: Deploy N:1 Gold [${{ matrix.gold.domainKey }}] -> ${{ inputs.target_environment }}"
+    needs: [stage0_lint_and_plan, stage2_deploy_domains_matrix]
+    runs-on: ${{ inputs.runner_group || 'ubuntu-latest' }}
+    environment: ${{ inputs.target_environment == 'PROD' && 'production' || (inputs.target_environment == 'QA' && 'staging' || 'development') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        gold: ${{ fromJson(needs.stage0_lint_and_plan.outputs.gold_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Install Enterprise CI/CD Dependencies"
+        run: pip install fabric-cicd azure-identity requests pytest
+      - name: "Auto-Resolve Stage 3 Gold N:1 Cross-Workspace GUIDs"
+        run: |
+          python cicd/sync_variable_library.py \
+            --topology config/enterprise-topology.json \
+            --domain "${{ matrix.gold.domainKey }}" \
+            --envs QA PROD \
+            --update-dev-defaults
+      - name: "Deploy Stage 3 Enterprise Gold Artifacts & Activate ValueSet"
+        run: |
+          python cicd/deploy_workspace.py \
+            --workspace-dir "${{ matrix.gold.folderPath }}" \
+            --target-workspace-name "${{ matrix.gold.wsName }}" \
+            --environment "${{ inputs.target_environment }}" \
+            --rest-only
+      - name: "Execute Stage 3 Gold Pipeline Smoke Test"
+        run: |
+          python cicd/run_smoke_test.py \
+            --workspace-name "${{ matrix.gold.wsName }}" \
+            --pipeline "${{ matrix.gold.smokeTestPipeline }}"

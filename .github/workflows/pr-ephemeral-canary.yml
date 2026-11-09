@@ -1,0 +1,46 @@
+name: "PR Ephemeral Canary Workspace Validation & Teardown"
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Simulated PR Number for Ephemeral Canary Test"
+        required: true
+        default: "901"
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  ephemeral_canary_validation:
+    name: "PR Ephemeral Canary (Provision -> Deploy -> Smoke Test -> Teardown)"
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: "Run Static Linter & Unit Test Suite (TC-01 to TC-15)"
+        run: |
+          pip install fabric-cicd azure-identity requests pytest
+          python cicd/lint_fabric_artifacts.py workspace
+          pytest tests/test_cox_enterprise_cicd_poc.py -v -k "not live"
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Provision & Deploy Ephemeral Canary Pair (FAB_CANARY_PR{N}_RAW & _FIN)"
+        run: |
+          PR_ID="${{ github.event.pull_request.number || inputs.pr_number || '901' }}"
+          python cicd/provision_ephemeral_canary.py --action provision --pr-number "$PR_ID" --deploy
+      - name: "Always Teardown Ephemeral Canary Workspaces"
+        if: always()
+        run: |
+          PR_ID="${{ github.event.pull_request.number || inputs.pr_number || '901' }}"
+          python cicd/provision_ephemeral_canary.py --action teardown --pr-number "$PR_ID"

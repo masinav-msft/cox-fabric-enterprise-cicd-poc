@@ -1,0 +1,140 @@
+{
+  "enterpriseSettings": {
+    "tenantId": "afa6899d-aa46-4992-a3eb-5c8015aa5d1f",
+    "subscriptionId": "9e114e9d-1e81-4b56-9ddd-55bae9226770",
+    "spnClientId": "2f48b80c-c2fa-4b4e-831d-2c0e0859b15c",
+    "spnObjectId": "be407c63-71c7-48a5-98f0-b99698d7971d",
+    "nonProdCapacityId": "3b977fbd-65a4-4186-8a77-2ee2dad13e31",
+    "statefulProtectedTypes": [
+      "Lakehouse",
+      "Warehouse",
+      "SQLDatabase"
+    ],
+    "alertSenderMailbox": "admin@MngEnvMCAP927255.onmicrosoft.com",
+    "spnSecretName": "fabric-cicd-spn-secret",
+    "keyVaultWebConnectionName": "CONN_KEYVAULT_PIPELINE_WEB",
+    "graphWebConnectionName": "CONN_GRAPH_PIPELINE_WEB",
+    "environments": {
+      "DEV": {
+        "keyVaultUri": "https://kv-cox-fabric-cicd-poc.vault.azure.net/",
+        "alertRecipients": "pbiuser01@MngEnvMCAP927255.onmicrosoft.com"
+      },
+      "QA": {
+        "keyVaultUri": "https://kv-cox-fabric-cicd-poc.vault.azure.net/",
+        "alertRecipients": "pbiuser01@MngEnvMCAP927255.onmicrosoft.com"
+      },
+      "PROD": {
+        "keyVaultUri": "https://kv-cox-fabric-cicd-poc.vault.azure.net/",
+        "alertRecipients": "admin@MngEnvMCAP927255.onmicrosoft.com"
+      }
+    }
+  },
+  "stage1_rawWorkspaces": [
+    {
+      "logicalName": "Common_Raw",
+      "folderPath": "workspace/Common_Raw",
+      "workspaces": {
+        "DEV": "E2E_CICD_POC_Common_Raw_DEV",
+        "QA": "E2E_CICD_POC_Common_Raw_QA",
+        "PROD": "E2E_CICD_POC_Common_Raw_PROD"
+      }
+    }
+  ],
+  "stage2_domainWorkspaces": [
+    {
+      "domainKey": "DP_FinanceAndAccounting",
+      "folderPath": "workspace/DP_FinanceAndAccounting",
+      "variableLibraryName": "Var_GlobalConfig",
+      "smokeTestPipeline": "pl_02_01_01_D365_Entities_Raw_to_EnrichedCurated_FabLink_GeneralLedger",
+      "environments": {
+        "DEV": {
+          "targetWorkspaceName": "E2E_CICD_POC",
+          "upstreamRawWorkspaceName": "E2E_CICD_POC_Common_Raw_DEV",
+          "rawLakehouseName": "lh_d365_raw",
+          "silverLakehouseName": "lh_d365_silver_gl",
+          "sqlEndpointConnectionName": "CONN_DEV_D365_RAW_SQL"
+        },
+        "QA": {
+          "targetWorkspaceName": "E2E_CICD_POC_QA",
+          "upstreamRawWorkspaceName": "E2E_CICD_POC_Common_Raw_QA",
+          "rawLakehouseName": "lh_d365_raw",
+          "silverLakehouseName": "lh_d365_silver_gl",
+          "sqlEndpointConnectionName": "CONN_QA_D365_RAW_SQL"
+        },
+        "PROD": {
+          "targetWorkspaceName": "E2E_CICD_POC_PROD",
+          "upstreamRawWorkspaceName": "E2E_CICD_POC_Common_Raw_PROD",
+          "rawLakehouseName": "lh_d365_raw",
+          "silverLakehouseName": "lh_d365_silver_gl",
+          "sqlEndpointConnectionName": "CONN_PROD_D365_RAW_SQL"
+        }
+      }
+    },
+    {
+      "domainKey": "DP_FleetWave",
+      "folderPath": "workspace/DP_FleetWave",
+      "variableLibraryName": "Var_GlobalConfig",
+      "smokeTestPipeline": "pl_01_FleetWave_Raw_to_Silver",
+      "environments": {
+        "DEV": {
+          "targetWorkspaceName": "E2E_CICD_POC_FleetWave_DEV",
+          "upstreamRawWorkspaceName": "E2E_CICD_POC_Common_Raw_DEV",
+          "rawLakehouseName": "lh_fleet_raw",
+          "silverLakehouseName": "lh_fleet_silver",
+          "sqlEndpointConnectionName": "CONN_DEV_FLEET_RAW_SQL"
+        },
+        "QA": {
+          "targetWorkspaceName": "E2E_CICD_POC_FleetWave_QA",
+          "upstreamRawWorkspaceName": "E2E_CICD_POC_Common_Raw_QA",
+          "rawLakehouseName": "lh_fleet_raw",
+          "silverLakehouseName": "lh_fleet_silver",
+          "sqlEndpointConnectionName": "CONN_QA_FLEET_RAW_SQL"
+        },
+        "PROD": {
+          "targetWorkspaceName": "E2E_CICD_POC_FleetWave_PROD",
+          "upstreamRawWorkspaceName": "E2E_CICD_POC_Common_Raw_PROD",
+          "rawLakehouseName": "lh_fleet_raw",
+          "silverLakehouseName": "lh_fleet_silver",
+          "sqlEndpointConnectionName": "CONN_PROD_FLEET_RAW_SQL"
+        }
+      }
+    }
+  ],
+  "stage3_goldWorkspaces": [
+    {
+      "domainKey": "Enterprise_Gold",
+      "folderPath": "workspace/Enterprise_Gold",
+      "variableLibraryName": "Var_GlobalConfig",
+      "smokeTestPipeline": "pl_03_Enterprise_Gold_Curated_GL",
+      "environments": {
+        "DEV": {
+          "targetWorkspaceName": "E2E_CICD_POC_Enterprise_Gold_DEV",
+          "upstreamFinanceWorkspaceName": "E2E_CICD_POC",
+          "upstreamFleetWorkspaceName": "E2E_CICD_POC_FleetWave_DEV",
+          "financeLakehouseName": "lh_d365_silver_gl",
+          "fleetLakehouseName": "lh_fleet_silver",
+          "goldLakehouseName": "lh_enterprise_gold",
+          "sqlEndpointConnectionName": "CONN_DEV_SILVER_GL_SQL"
+        },
+        "QA": {
+          "targetWorkspaceName": "E2E_CICD_POC_Enterprise_Gold_QA",
+          "upstreamFinanceWorkspaceName": "E2E_CICD_POC_QA",
+          "upstreamFleetWorkspaceName": "E2E_CICD_POC_FleetWave_QA",
+          "financeLakehouseName": "lh_d365_silver_gl",
+          "fleetLakehouseName": "lh_fleet_silver",
+          "goldLakehouseName": "lh_enterprise_gold",
+          "sqlEndpointConnectionName": "CONN_QA_SILVER_GL_SQL"
+        },
+        "PROD": {
+          "targetWorkspaceName": "E2E_CICD_POC_Enterprise_Gold_PROD",
+          "upstreamFinanceWorkspaceName": "E2E_CICD_POC_PROD",
+          "upstreamFleetWorkspaceName": "E2E_CICD_POC_FleetWave_PROD",
+          "financeLakehouseName": "lh_d365_silver_gl",
+          "fleetLakehouseName": "lh_fleet_silver",
+          "goldLakehouseName": "lh_enterprise_gold",
+          "sqlEndpointConnectionName": "CONN_PROD_SILVER_GL_SQL"
+        }
+      }
+    }
+  ]
+}

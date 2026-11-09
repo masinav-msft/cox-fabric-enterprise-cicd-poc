@@ -1,0 +1,53 @@
+{
+  "properties": {
+    "jobMode": "Batch",
+    "source": {
+      "type": "LakehouseTable",
+      "connectionSettings": {
+        "type": "Lakehouse",
+        "typeProperties": {
+          "workspaceId": "@libraryVariables('Var_GlobalConfig', 'v_raw_workspace_id')",
+          "artifactId": "@libraryVariables('Var_GlobalConfig', 'v_raw_lakehouse_id')",
+          "rootFolder": "Tables"
+        }
+      }
+    },
+    "destination": {
+      "type": "LakehouseTable",
+      "connectionSettings": {
+        "type": "Lakehouse",
+        "typeProperties": {
+          "workspaceId": "@libraryVariables('Var_GlobalConfig', 'v_silver_workspace_id')",
+          "artifactId": "@libraryVariables('Var_GlobalConfig', 'v_silver_lakehouse_id')",
+          "rootFolder": "Tables"
+        }
+      }
+    },
+    "policy": {
+      "timeout": "0.12:00:00"
+    }
+  },
+  "activities": [
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "properties": {
+        "source": {
+          "datasetSettings": {
+            "schema": "dbo",
+            "table": "GeneralLedgerAccountEntry"
+          },
+          "changeDataSettings": {
+            "readMethod": "Full"
+          }
+        },
+        "destination": {
+          "writeBehavior": "Overwrite",
+          "datasetSettings": {
+            "schema": "dbo",
+            "table": "GeneralLedgerAccountEntry_CopyJob"
+          }
+        }
+      }
+    }
+  ]
+}

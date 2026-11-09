@@ -1,0 +1,82 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/valueSet/1.0.0/schema.json",
+  "name": "QA",
+  "variableOverrides": [
+    {
+      "name": "v_env_name",
+      "value": "QA"
+    },
+    {
+      "name": "v_raw_workspace_id",
+      "value": "64b9541b-5e56-4e01-b33a-6f26e894ca6b"
+    },
+    {
+      "name": "v_raw_lakehouse_id",
+      "value": "338d01df-bf75-46a1-ab22-3542384c7ca7"
+    },
+    {
+      "name": "v_raw_lakehouse_name",
+      "value": "lh_d365_raw"
+    },
+    {
+      "name": "v_raw_sql_endpoint_server",
+      "value": "twe2nl2gvkjeti7llsablks5d4-dnklszcwlyau5mz2n4torfgknm.datawarehouse.fabric.microsoft.com"
+    },
+    {
+      "name": "v_raw_sql_endpoint_id",
+      "value": "74d92494-f61c-465e-9ff6-a6b3d0f894b8"
+    },
+    {
+      "name": "v_raw_sql_connection_id",
+      "value": "7047e1b8-66fa-4ad7-93d0-76dd70bb2e67"
+    },
+    {
+      "name": "v_silver_workspace_id",
+      "value": "e03888cb-cc2c-4de7-9153-8c06509c46ec"
+    },
+    {
+      "name": "v_silver_lakehouse_id",
+      "value": "884ba2f1-2e20-45a2-beae-25739a33e3cd"
+    },
+    {
+      "name": "v_silver_lakehouse_name",
+      "value": "lh_d365_silver_gl"
+    },
+    {
+      "name": "v_silver_sql_endpoint_id",
+      "value": "a8bb3e8f-cd49-48cd-bf78-23d564d2b7aa"
+    },
+    {
+      "name": "v_key_vault_uri",
+      "value": "https://kv-cox-fabric-cicd-poc.vault.azure.net/"
+    },
+    {
+      "name": "v_spn_secret_name",
+      "value": "fabric-cicd-spn-secret"
+    },
+    {
+      "name": "v_kv_web_connection_id",
+      "value": "03ce01ff-fbaf-477c-9fa3-03178b544ad3"
+    },
+    {
+      "name": "v_graph_web_connection_id",
+      "value": "87d4c721-4ae1-496c-a9e6-4237d66ec8b0"
+    },
+    {
+      "name": "v_tenant_id",
+      "value": "afa6899d-aa46-4992-a3eb-5c8015aa5d1f"
+    },
+    {
+      "name": "v_spn_client_id",
+      "value": "2f48b80c-c2fa-4b4e-831d-2c0e0859b15c"
+    },
+    {
+      "name": "v_alert_sender_mailbox",
+      "value": "admin@MngEnvMCAP927255.onmicrosoft.com"
+    },
+    {
+      "name": "v_alert_notification_email",
+      "value": "pbiuser01@MngEnvMCAP927255.onmicrosoft.com"
+    }
+  ]
+}

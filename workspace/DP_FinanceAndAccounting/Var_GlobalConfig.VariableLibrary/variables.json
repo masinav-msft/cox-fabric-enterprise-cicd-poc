@@ -1,0 +1,119 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/variables/1.0.0/schema.json",
+  "variables": [
+    {
+      "name": "v_env_name",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "DEV"
+    },
+    {
+      "name": "v_raw_workspace_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "2899319d-a7f4-42b0-b782-239a666d6fec"
+    },
+    {
+      "name": "v_raw_lakehouse_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "d49098e5-99a0-41bd-80a8-135faf2e7005"
+    },
+    {
+      "name": "v_raw_lakehouse_name",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "lh_d365_raw"
+    },
+    {
+      "name": "v_raw_sql_endpoint_server",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "twe2nl2gvkjeti7llsablks5d4-tuyzskhuu6yefn4ceongm3lp5q.datawarehouse.fabric.microsoft.com"
+    },
+    {
+      "name": "v_raw_sql_endpoint_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "dde9ca58-0384-4957-8fb3-5412b5163cf5"
+    },
+    {
+      "name": "v_raw_sql_connection_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "fc23b75e-28ea-48d0-9621-f8390500f384"
+    },
+    {
+      "name": "v_silver_workspace_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "fc4bfa70-b734-4ac6-84bd-85b0b6ec0bcf"
+    },
+    {
+      "name": "v_silver_lakehouse_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "7ebbf0ab-336c-4ecb-bdf1-fc821d2170e8"
+    },
+    {
+      "name": "v_silver_lakehouse_name",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "lh_d365_silver_gl"
+    },
+    {
+      "name": "v_silver_sql_endpoint_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "f568b422-430c-4d3b-8da8-00ae6c2820b6"
+    },
+    {
+      "name": "v_key_vault_uri",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "https://kv-cox-fabric-cicd-poc.vault.azure.net/"
+    },
+    {
+      "name": "v_spn_secret_name",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "fabric-cicd-spn-secret"
+    },
+    {
+      "name": "v_kv_web_connection_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "03ce01ff-fbaf-477c-9fa3-03178b544ad3"
+    },
+    {
+      "name": "v_graph_web_connection_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "87d4c721-4ae1-496c-a9e6-4237d66ec8b0"
+    },
+    {
+      "name": "v_tenant_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "afa6899d-aa46-4992-a3eb-5c8015aa5d1f"
+    },
+    {
+      "name": "v_spn_client_id",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "2f48b80c-c2fa-4b4e-831d-2c0e0859b15c"
+    },
+    {
+      "name": "v_alert_sender_mailbox",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "admin@MngEnvMCAP927255.onmicrosoft.com"
+    },
+    {
+      "name": "v_alert_notification_email",
+      "note": "Auto-resolved by sync_variable_library.py (DEV)",
+      "type": "String",
+      "value": "pbiuser01@MngEnvMCAP927255.onmicrosoft.com"
+    }
+  ]
+}

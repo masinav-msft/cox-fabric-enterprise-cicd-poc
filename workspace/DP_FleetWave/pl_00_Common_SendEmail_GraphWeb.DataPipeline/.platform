@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_00_Common_SendEmail_GraphWeb",
+    "description": "Central SPN-Safe Email Notification Utility Pipeline"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "30000001-0000-4000-8000-000000000003"
+  }
+}

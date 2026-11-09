@@ -1,0 +1,155 @@
+{
+  "properties": {
+    "description": "FleetWave Telemetry Raw to Silver Pipeline (100% Parameterized via Var_GlobalConfig)",
+    "parameters": {
+      "p_simulate_failure": {
+        "type": "bool",
+        "defaultValue": false
+      }
+    },
+    "libraryVariables": {
+      "Var_GlobalConfig_v_env_name": {
+        "type": "String",
+        "variableName": "v_env_name",
+        "libraryName": "Var_GlobalConfig"
+      },
+      "Var_GlobalConfig_v_raw_workspace_id": {
+        "type": "String",
+        "variableName": "v_raw_workspace_id",
+        "libraryName": "Var_GlobalConfig"
+      },
+      "Var_GlobalConfig_v_raw_lakehouse_id": {
+        "type": "String",
+        "variableName": "v_raw_lakehouse_id",
+        "libraryName": "Var_GlobalConfig"
+      },
+      "Var_GlobalConfig_v_raw_sql_endpoint_server": {
+        "type": "String",
+        "variableName": "v_raw_sql_endpoint_server",
+        "libraryName": "Var_GlobalConfig"
+      },
+      "Var_GlobalConfig_v_raw_sql_endpoint_id": {
+        "type": "String",
+        "variableName": "v_raw_sql_endpoint_id",
+        "libraryName": "Var_GlobalConfig"
+      },
+      "Var_GlobalConfig_v_raw_sql_connection_id": {
+        "type": "String",
+        "variableName": "v_raw_sql_connection_id",
+        "libraryName": "Var_GlobalConfig"
+      },
+      "Var_GlobalConfig_v_silver_workspace_id": {
+        "type": "String",
+        "variableName": "v_silver_workspace_id",
+        "libraryName": "Var_GlobalConfig"
+      },
+      "Var_GlobalConfig_v_silver_lakehouse_id": {
+        "type": "String",
+        "variableName": "v_silver_lakehouse_id",
+        "libraryName": "Var_GlobalConfig"
+      },
+      "Var_GlobalConfig_v_silver_sql_endpoint_id": {
+        "type": "String",
+        "variableName": "v_silver_sql_endpoint_id",
+        "libraryName": "Var_GlobalConfig"
+      }
+    },
+    "activities": [
+      {
+        "name": "Copy_Entity_Data_Raw_To_Silver",
+        "type": "Copy",
+        "state": "Active",
+        "policy": {
+          "timeout": "0.02:00:00",
+          "retry": 1,
+          "retryIntervalInSeconds": 30
+        },
+        "typeProperties": {
+          "source": {
+            "type": "DataWarehouseSource",
+            "sqlReaderQuery": {
+              "value": "@if(pipeline().parameters.p_simulate_failure, 'SELECT * FROM dbo.NonExistentFleetTable', 'SELECT VehicleId, FleetUnit, VIN, Region, OdometerMiles, FuelGallons, MaintenanceStatus, LastTelemetryUTC FROM dbo.FleetWaveTelemetryRaw')",
+              "type": "Expression"
+            },
+            "datasetSettings": {
+              "type": "DataWarehouseTable",
+              "linkedService": {
+                "name": "Raw_SQL_Analytics_Endpoint",
+                "properties": {
+                  "type": "DataWarehouse",
+                  "typeProperties": {
+                    "endpoint": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_sql_endpoint_server",
+                    "artifactId": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_sql_endpoint_id",
+                    "workspaceId": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_workspace_id"
+                  }
+                }
+              },
+              "externalReferences": {
+                "connection": "@pipeline().libraryVariables.Var_GlobalConfig_v_raw_sql_connection_id"
+              }
+            }
+          },
+          "sink": {
+            "type": "LakehouseTableSink",
+            "tableActionOption": "OverwriteSchema",
+            "datasetSettings": {
+              "type": "LakehouseTable",
+              "typeProperties": {
+                "table": "FleetWaveTelemetry_Silver"
+              },
+              "linkedService": {
+                "name": "Silver_Lakehouse_Target",
+                "properties": {
+                  "type": "Lakehouse",
+                  "typeProperties": {
+                    "artifactId": "@pipeline().libraryVariables.Var_GlobalConfig_v_silver_lakehouse_id",
+                    "workspaceId": "@pipeline().libraryVariables.Var_GlobalConfig_v_silver_workspace_id",
+                    "rootFolder": "Tables"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "Invoke_Central_Fail_Alert_Silver",
+        "type": "ExecutePipeline",
+        "state": "Active",
+        "dependsOn": [
+          {
+            "activity": "Copy_Entity_Data_Raw_To_Silver",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "pipeline": {
+            "referenceName": "pl_00_Common_SendEmail_GraphWeb",
+            "type": "PipelineReference"
+          },
+          "waitOnCompletion": true,
+          "parameters": {
+            "p_failed_pipeline_name": {
+              "value": "@pipeline().Pipeline",
+              "type": "Expression"
+            },
+            "p_failed_run_id": {
+              "value": "@pipeline().RunId",
+              "type": "Expression"
+            },
+            "p_failed_activity_name": {
+              "value": "Copy_Entity_Data_Raw_To_Silver",
+              "type": "Expression"
+            },
+            "p_error_message": {
+              "value": "@string(activity('Copy_Entity_Data_Raw_To_Silver').error.message)",
+              "type": "Expression"
+            }
+          }
+        }
+      }
+    ]
+  }
+}
