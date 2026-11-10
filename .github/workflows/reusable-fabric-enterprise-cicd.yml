@@ -119,6 +119,12 @@ jobs:
             --target-workspace-name "${{ matrix.domain.wsName }}" \
             --environment "${{ inputs.target_environment }}" \
             --spn-object-id "$SPN_OBJ"
+      - name: "Backup Existing QA/PROD Schedules, Semantic Model Settings & Tags"
+        run: |
+          python cicd/workspace_state_guard.py \
+            --action backup \
+            --target-workspace-name "${{ matrix.domain.wsName }}" \
+            --state-file ".artifacts/state_${{ matrix.domain.domainKey }}.json"
       - name: "Deploy Domain Artifacts & Activate ValueSet (${{ inputs.target_environment }})"
         run: |
           python cicd/deploy_workspace.py \
@@ -126,6 +132,12 @@ jobs:
             --target-workspace-name "${{ matrix.domain.wsName }}" \
             --environment "${{ inputs.target_environment }}" \
             --rest-only
+      - name: "Restore QA/PROD Schedules, Tags & Refresh SQL Analytics Endpoint Metadata"
+        run: |
+          python cicd/workspace_state_guard.py \
+            --action restore \
+            --target-workspace-name "${{ matrix.domain.wsName }}" \
+            --state-file ".artifacts/state_${{ matrix.domain.domainKey }}.json"
       - name: "Execute Post-Deploy Pipeline Smoke Test"
         run: |
           python cicd/run_smoke_test.py \

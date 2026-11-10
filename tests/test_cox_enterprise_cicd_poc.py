@@ -17,6 +17,7 @@ from fabric_enterprise_client import FabricEnterpriseClient
 from lint_fabric_artifacts import lint_workspace_tree
 from preflight_rbac_validator import check_preflight_errors
 from deploy_workspace import deploy_workspace
+from workspace_state_guard import backup_workspace_operational_state, restore_workspace_operational_state
 
 
 def test_tc01_static_linter_blocks_raw_guid(tmp_path: Path):
@@ -293,3 +294,37 @@ def test_tc15_prod_scale_stateful_safety_during_orphan_cleanup(tmp_path: Path):
     assert "lh_extra_stateful.Lakehouse" in result["preservedStatefulItems"]
     assert "pl_old_deprecated_orphan.DataPipeline" in result["prunedStatelessOrphans"]
     mock_client.request.assert_called_once_with("DELETE", "/workspaces/ws-1/items/pl-del-1")
+
+
+def test_tc16_qa_schedule_and_sql_metadata_backup_restore_guard(tmp_path: Path):
+    """TC-16: Verify Matthew James's requirement — QA DataPipeline schedules & SQL Endpoint metadata are backed up and restored across deployments."""
+    mock_client = MagicMock()
+    # Backup mocks: /workspaces, /workspaces/{id}/items, /workspaces/{id}/items/{pl}/jobs/Pipeline/schedules
+    mock_client.list_all_paginated.side_effect = [
+        [{"id": "ws-qa", "displayName": "E2E_CICD_POC_QA"}],
+        [
+            {"id": "pl-1", "displayName": "pl_02_01_01_D365_Entities_Raw_to_EnrichedCurated_FabLink_GeneralLedger", "type": "DataPipeline", "tags": ["Finance-GL"]},
+            {"id": "sm-1", "displayName": "sm_d365_gl", "type": "SemanticModel"}
+        ],
+        [{"id": "sched-1", "enabled": True, "configuration": {"type": "Cron", "interval": 60}}],
+        # Restore mocks: /workspaces, /workspaces/{id}/items, existing schedules (empty because overwritten!), /workspaces/{id}/lakehouses
+        [{"id": "ws-qa", "displayName": "E2E_CICD_POC_QA"}],
+        [{"id": "pl-1", "displayName": "pl_02_01_01_D365_Entities_Raw_to_EnrichedCurated_FabLink_GeneralLedger", "type": "DataPipeline"}],
+        [],
+        [{"id": "lh-silver-qa", "displayName": "lh_d365_silver_gl"}]
+    ]
+    mock_client.request.side_effect = [
+        {},  # POST schedule restore
+        {"properties": {"sqlEndpointProperties": {"id": "sql-ep-qa-1"}}},  # GET lakehouse detail
+        {"status": "Succeeded"}  # POST sqlEndpoints/refreshMetadata
+    ]
+
+    state_file = tmp_path / "qa_state.json"
+    snap = backup_workspace_operational_state(mock_client, "E2E_CICD_POC_QA", state_file)
+    assert "pl_02_01_01_D365_Entities_Raw_to_EnrichedCurated_FabLink_GeneralLedger.DataPipeline" in snap["itemSchedules"]
+    assert len(snap["semanticModels"]) == 1
+
+    restored = restore_workspace_operational_state(mock_client, "E2E_CICD_POC_QA", snap)
+    assert "pl_02_01_01_D365_Entities_Raw_to_EnrichedCurated_FabLink_GeneralLedger.DataPipeline" in restored["restoredSchedules"]
+    assert "lh_d365_silver_gl" in restored["refreshedSqlEndpoints"]
+
